@@ -11,7 +11,7 @@ body {
     grid-column-gap: 25px;
     grid-row-gap: 25px;
     grid-template-columns: 475px 1250px;
-    grid-template-rows: 1100px 720px;
+    grid-template-rows: 1100px 520px;
     grid-template-areas:
         "info map"
         "info out";
@@ -335,6 +335,37 @@ label > .label-body {
     box-shadow: 0px 3px 5px #DDD;
 
     width: 1250px;
-    height: 720px;
+    height: 515px;
 
+}
+
+#info-download-button {
+    height: 38px;
+    padding: 0 30px;
+    color: #555;
+
+    text-align: center;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 38px;
+    letter-spacing: .1rem;
+    text-transform: uppercase;
+    text-decoration: none;
+    white-space: nowrap;
+    background-color: transparent;
+    border-radius: 4px;
+    border: 1px solid #bbb;
+    cursor: pointer;
+    box-sizing: border-box;
+    margin-top: 40px;
+    margin-bottom: 5px;
+    margin-right: 40px;
+    margin-left: 120px;
+
+}
+
+#info-download-button:hover {
+    color: #333;
+    border-color: #888;
+    outline: 0;
 }

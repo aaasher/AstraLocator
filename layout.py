@@ -18,6 +18,7 @@ tab_selected_style = {
 app_layout = html.Div(
     id='main',
     children=[
+        dcc.Store(id='memory'),
         html.A('Astra.Locator',
                id='dash-info-heading-1'),
         html.Div(
@@ -143,7 +144,10 @@ app_layout = html.Div(
                                                      {'label': 'Топ-1000', 'value': 1000}],
                                             value=500,
                                             multi=False
-                                        )
+                                        ),
+
+                                        dbc.Button('Скачать топ локаций', id='info-download-button'),
+                                        dcc.Download(id="download-locs")
 
                                     ]
                                 ),
@@ -183,16 +187,9 @@ app_layout = html.Div(
                 html.Div(
                     id='dash-detail',
                     children=[
-                        html.A('Топ-10 рекомендованных локаций',
+                        html.A('Выбранная локация (клик на точку на карте):',
                                className='info-imp-slider-sub-text'),
-                        dcc.Textarea(
-                            id='detail-api-output',
-                            style={'width': '90%',
-                                   'height': '90%',
-                                   'marginLeft': '40px',
-                                   'marginTop': '20px',
-                                   },
-                        ),
+                        dcc.Graph(id='panel-main', config={'displayModeBar': False})
                     ]
                 ),
 

@@ -9,6 +9,8 @@ from flask import request
 from datetime import datetime
 import h3
 from sklearn.neighbors import BallTree
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 
 def load_coord_grid(path=None):
@@ -77,7 +79,6 @@ def df_to_geojson(df, top=10000):
                  'metric_traffic': row.metric_traffic,
                  'dist': row.dist,
                  'count_comps': row.count_comps,
-                 'comps_array': row.comps_array if row.comps_array else [],
                  'rank_rent': row.rank_rent,
                  'rank_traffic': row.rank_traffic,
                  'rank_comps': row.rank_comps,
@@ -159,6 +160,7 @@ def find_optimal(sub_cat,
     # convert to geojson
     return df_to_geojson(df_ranked)
 
+
 @app.callback(
     Output("info-cat-dropdown", "options"),
     [Input("info-core-dropdown", "value")]
@@ -175,7 +177,7 @@ def upd_dropdown(core):
 
 @app.callback(
     Output("map-main", "figure"),
-    Output("detail-api-output", "value"),
+    Output("memory", "data"),
 
     Input('info-cat-dropdown', 'value'),
     Input('info-imp-slider-comps', 'value'),
@@ -262,7 +264,162 @@ def upd_main(sub_cat,
                 relayout_data['yaxis.range[1]']
             ]
 
-    return fig, json.dumps(geojs['features'][:10], indent=2, ensure_ascii=False)
+    return fig, geojs
+
+
+@app.callback(
+    Output("download-locs", "data"),
+    Input("info-download-button", "n_clicks"),
+    Input('memory', 'data'),
+    prevent_initial_call=True,
+)
+def download(n_clicks, data):
+    if not n_clicks:
+        raise PreventUpdate
+    return dict(content=json.dumps(data, ensure_ascii=False, indent=2), filename='geojson_data.json')
+
+
+point_info = pd.read_csv('data/point_info.csv')
+
+
+@app.callback(
+    Output("panel-main", "figure"),
+
+    Input('map-main', 'clickData'),
+    Input('info-cat-dropdown', 'value'),
+    Input('memory', 'data')
+
+)
+def make_point_panel(click_data, sub_cat, geojs):
+
+    if not click_data and sub_cat and geojs:
+        clicked_point = 1260
+    elif not click_data and (not sub_cat or not geojs):
+        raise PreventUpdate
+    else:
+        clicked_point = click_data['points'][0]['customdata'][0]
+
+    mp = geojson_to_df(geojs)
+    mp = mp[mp['point_index'] == clicked_point]
+    pi = point_info[point_info['point_index'] == clicked_point]
+
+    # get competitors dataframe
+    comps = json.loads(pi['comps_array'].values[0].replace("'", '"'))
+
+    comps = [elem for sub in [comps[sub] for sub in sub_cat if sub in comps] for elem in sub]
+
+    if comps:
+        comps = competition_data[competition_data['ya_id'].isin(comps)].drop_duplicates(subset=['lat', 'long'])
+        point_coords = mp['point_lat'].values[0], mp['point_lon'].values[0]
+        comps['dist'] = comps.apply(lambda row: haversine_exc((row.lat, row.long), point_coords), axis=1)
+        comps['dist'] = comps['dist'].round(5)
+        comps['lat'] = comps['lat'].round(5)
+        comps['long'] = comps['long'].round(5)
+        comps['address'] = comps['address'].str.replace('Россия, Москва,', '')
+        comps = comps[['name', 'lat', 'long', 'dist', 'address', 'hours_text']].sort_values(by='dist').reset_index(
+            drop=True)
+        comps.columns = ['Название', 'Широта', 'Долгота', 'Расстояние, км', 'Адрес', 'Часы работы']
+    else:
+        comps = pd.DataFrame([], columns=['Название', 'Широта', 'Долгота', 'Расстояние, км', 'Адрес', 'Часы работы'])
+
+    # get traffic_hours timeseries
+    ts_hour = json.loads(pi['unique_device_hour'].values[0])
+    total = sum(ts_hour)
+    ts_hour = pd.DataFrame({str(idx): (hour + 1) / (total + 1) for idx, hour in enumerate(ts_hour)},
+                           index=[0]).T.reset_index()
+    ts_hour.columns = ['Час', 'Доля траффика (%)']
+
+    # create weekly ts
+    ts_weekday = json.loads(pi['unique_device_weekday'].values[0])
+    total = sum(ts_weekday)
+    mapping_wd = {
+        0: 'Пн',
+        1: 'Вт',
+        2: 'Ср',
+        3: 'Чт',
+        4: 'Пт',
+        5: 'Сб',
+        6: 'Вс'
+    }
+    ts_weekday = pd.DataFrame(
+        {mapping_wd[idx]: (weekday + 1) / (total + 1) for idx, weekday in enumerate(ts_weekday)},
+        index=[0]).T.reset_index()
+    ts_weekday.columns = ['День', 'Доля траффика (%)']
+
+    # create common info
+    mp_1 = mp[['point_index', 'point_lat', 'point_lon', 'metric_rent', 'metric_traffic', 'count_comps', 'total_rank']]
+
+    mp_1['metric_rent'] = (mp_1['metric_rent'] / 38).astype(int).astype(str)
+    mp_1['metric_traffic'] = mp_1['metric_traffic'].astype(int).astype(str)
+    mp_1['point_lat'] = mp_1['point_lat'].round(5).astype(str)
+    mp_1['point_lon'] = mp_1['point_lon'].round(5).astype(str)
+
+    mp_1.columns = ['Локация', 'Широта', 'Долгота',
+                    'Аренда (руб. в мес. за кв.м.)', 'Траффик (чел. в день, радиус 0.5 км)',
+                    'Конкуренты (шт., радиус 0.5 км)', 'Рейтинг']
+    # mp_1 = mp_1.T.reset_index()
+    # mp_1.columns = ['Показатель', 'Значение']
+
+    # build figure
+    core_color = '#EBF3FC'
+    fig = make_subplots(
+        rows=3,
+        cols=2,
+        column_widths=[0.4, 0.5],
+        specs=[[{'type': 'table', "colspan": 2}, {}],
+               [{}, {'type': 'table', "rowspan": 2}],
+               [{}, {}]],
+        subplot_titles=(
+            '', '', 'Доля траффика по часам (%)', 'Ближайшие конкуренты', 'Доля траффика по дням (%)'
+        )
+
+    )
+
+    trace_general = go.Table(
+        # columnwidth = [150,100],
+        header=dict(values=list(mp_1.columns),
+                    fill_color=core_color,
+                    align='left'),
+        cells=dict(values=[mp_1[col] for col in mp_1.columns],
+                   fill_color='white',
+                   align='left',
+                   height=70))
+
+    trace_wd = px.bar(x='День',
+                      y='Доля траффика (%)',
+                      data_frame=ts_weekday)
+
+    trace_wd.update_traces(marker_color=core_color)
+    trace_wd.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    trace_wd.update_yaxes(color='white')
+
+    trace_hr = px.bar(x='Час',
+                      y='Доля траффика (%)',
+                      data_frame=ts_hour)
+
+    trace_hr.update_traces(marker_color=core_color)
+    trace_hr.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    trace_hr.update_yaxes(color='white')
+
+    trace_comps = go.Table(
+        header=dict(values=list(comps.columns),
+                    fill_color=core_color,
+                    align='left'),
+        cells=dict(values=[comps[col] for col in comps.columns],
+                   fill_color='white',
+                   align='left'))
+
+    fig.add_trace(trace_general, row=1, col=1)
+    fig.add_trace(trace_hr['data'][0], row=2, col=1)
+    fig.add_trace(trace_wd['data'][0], row=3, col=1)
+    fig.add_trace(trace_comps, row=2, col=2)
+    fig.update_layout(width=1220, height=400)
+
+    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(b=0, t=20, l=0, r=0))
+    fig.update_yaxes(color='white')
+
+    return fig
+
 
 
 if __name__ == '__main__':
