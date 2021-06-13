@@ -11,7 +11,7 @@ import h3
 from sklearn.neighbors import BallTree
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
-
+import dash
 
 def load_coord_grid(path=None):
     if path is None:
@@ -274,13 +274,17 @@ def upd_main(sub_cat,
     prevent_initial_call=True,
 )
 def download(n_clicks, data):
-    if not n_clicks:
+    ctx = dash.callback_context
+    if not ctx:
         raise PreventUpdate
-    return dict(content=json.dumps(data, ensure_ascii=False, indent=2), filename='geojson_data.json')
+    trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    if trigger_id == "info-download-button":
+        return dict(content=json.dumps(data, ensure_ascii=False, indent=2), filename='geojson_data.json')
+    else:
+        raise PreventUpdate
 
 
 point_info = pd.read_csv('data/point_info.csv')
-
 
 @app.callback(
     Output("panel-main", "figure"),
@@ -419,7 +423,6 @@ def make_point_panel(click_data, sub_cat, geojs):
     fig.update_yaxes(color='white')
 
     return fig
-
 
 
 if __name__ == '__main__':
