@@ -170,7 +170,9 @@ body {
 }
 
 #info-cat-dropdown,
-#info-core-dropdown{
+#info-core-dropdown,
+#info-top-dropdown,
+#info-hours-dropdown{
     font-family: "Open Sans", verdana, arial, sans-serif;
     font-size: 12px;
     color: rgb(42, 63, 95);

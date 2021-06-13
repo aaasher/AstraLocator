@@ -41,7 +41,7 @@ app_layout = html.Div(
                                         dcc.Markdown(t.dashboard_section_text,
                                                      className='dash-info-text'),
 
-                                        html.A('Раздел бизнеса:',
+                                        html.A('Отрасль:',
                                                id='info-core-dropdown-text'),
                                         dcc.Dropdown(
                                             id='info-core-dropdown',
@@ -51,7 +51,7 @@ app_layout = html.Div(
                                             multi=False
                                         ),
 
-                                        html.A('Категории бизнеса:',
+                                        html.A('Виды деятельности:',
                                                id='info-cat-dropdown-text'),
                                         dcc.Dropdown(
                                             id='info-cat-dropdown',
@@ -61,10 +61,24 @@ app_layout = html.Div(
                                             multi=True
                                         ),
 
+                                        html.A('Планируемые часы работы:',
+                                               className='info-imp-slider-sub-text'),
+
+                                        dcc.Dropdown(
+                                            id='info-hours-dropdown',
+                                            options=[{'label': 'Не важно', 'value': 'all'},
+                                                     {'label': 'Дневные (8:00-21:59)', 'value': 'day'},
+                                                     {'label': 'Ночные (22:00-7:59)', 'value': 'night'},
+                                                     ],
+                                            value='day',
+                                            multi=False
+                                        ),
+
                                         html.A('Что для вас важно?',
                                                className='info-imp-slider-sub-text'),
 
-                                        html.A('Слабая конкуренция (малое кол-во точек бизнеса аналогичной категории)',
+                                        html.A(['Низкая конкуренция', html.Br(),
+                                                '(=мало точек конкурентов в радиусе 0.5 км)'],
                                                className='info-imp-slider-sub-text-l'),
                                         dcc.Slider(
                                             id='info-imp-slider-comps',
@@ -72,10 +86,11 @@ app_layout = html.Div(
                                             min=0,
                                             max=10,
                                             step=1,
-                                            value=10
+                                            value=7
                                         ),
 
-                                        html.A('Дешевая аренда (низкая сред. стоимость аренды  в месяц помещения 38 кв. метров)',
+                                        html.A(['Дешевая аренда', html.Br(),
+                                                '(=низкая стоимость аренды жилой недвижимости)'],
                                                className='info-imp-slider-sub-text-l'),
                                         dcc.Slider(
                                             id='info-imp-slider-rent',
@@ -83,10 +98,11 @@ app_layout = html.Div(
                                             min=0,
                                             max=10,
                                             step=1,
-                                            value=5
+                                            value=7
                                         ),
 
-                                        html.A('Cильный траффик (данные сейчас рандомные, на хакатоне их получим)',
+                                        html.A(['Высокий траффик', html.Br(),
+                                                '(=много людей в среднем в день в радиусе 0.5 км)'],
                                                className='info-imp-slider-sub-text-l'),
                                         dcc.Slider(
                                             id='info-imp-slider-traffic',
@@ -94,7 +110,7 @@ app_layout = html.Div(
                                             min=0,
                                             max=10,
                                             step=1,
-                                            value=1
+                                            value=10
 
                                         ),
 
@@ -112,6 +128,21 @@ app_layout = html.Div(
                                             marks={km / 10: f'{km / 10} км'
                                                    for km in range(5, 100, 5)}
 
+                                        ),
+
+                                        html.A('Cколько локаций показывать?',
+                                               className='info-imp-slider-sub-text'),
+
+                                        dcc.Dropdown(
+                                            id='info-top-dropdown',
+                                            options=[{'label': 'Все', 'value': 10000},
+                                                     {'label': 'Топ-25', 'value': 25},
+                                                     {'label': 'Топ-50', 'value': 50},
+                                                     {'label': 'Топ-100', 'value': 100},
+                                                     {'label': 'Топ-500', 'value': 500},
+                                                     {'label': 'Топ-1000', 'value': 1000}],
+                                            value=500,
+                                            multi=False
                                         )
 
                                     ]
